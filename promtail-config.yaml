@@ -1,0 +1,29 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+# File to store positions so that restarted promtail picks up where it left off.
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: "http://${MAIN_INSTANCE_PRIVATE_IP}:3100/loki/api/v1/push"
+
+scrape_configs:
+  # Scrape system logs from /var/log
+  - job_name: system-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: system
+          __path__: /var/log/**/*.log
+
+  # Scrape Docker container logs
+  - job_name: docker-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker
+          __path__: /var/lib/docker/containers/*/*.log 

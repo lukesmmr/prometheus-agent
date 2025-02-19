@@ -1,0 +1,32 @@
+services:
+  node-exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    container_name: node_exporter
+    # Using host networking allows node_exporter to easily access /proc, /sys etc.
+    network_mode: "host"
+    pid: "host"
+    restart: always
+    volumes:
+      - "/proc:/host/proc:ro"
+      - "/sys:/host/sys:ro"
+      - "/:/rootfs:ro"
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    restart: always
+    environment:
+      - MAIN_INSTANCE_PRIVATE_IP=${MAIN_INSTANCE_PRIVATE_IP}
+    volumes:
+      - "/var/log:/var/log:ro"
+      - "/var/lib/docker/containers:/var/lib/docker/containers:ro"
+      - "./promtail-config.yaml:/etc/promtail/promtail.yaml:ro"
+    command:
+      - -config.file=/etc/promtail/promtail.yaml
+      - -config.expand-env=true
+
+  ping-agent:
+    image: alpine
+    container_name: ping_agent
+    restart: always
+    command: sh -c "while true; do ping -c 1 ${MAIN_INSTANCE_PRIVATE_IP} && sleep 60; done" 
