@@ -6,7 +6,7 @@ This repository provides a simple, lightweight logging and metrics agent to run 
    Collects host-level metrics. The service is very low on memory and CPU usage.
 
 2. **promtail**  
-   Reads log files (both system logs and Docker container logs) and forwards them to your main EC2 instance running a Grafana custom instance (with a Loki data source configured). It now pulls the MAIN instance IP from an environment file.
+   Reads log files (both system logs and Docker container logs) and forwards them to your main EC2 instance running a Grafana custom instance (with a Loki data source configured). It pulls the MAIN instance IP from an environment file.
 
 3. **ping-agent**  
    Pings the main EC2 instance via its private IP every 60 seconds to ensure that the connection is up.
