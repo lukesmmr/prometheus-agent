@@ -20,10 +20,10 @@ scrape_configs:
           __path__: /var/log/**/*.log
 
   # Scrape Docker container logs
-  - job_name: docker-logs
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: docker
-          __path__: /var/lib/docker/containers/*/*.log 
+  # - job_name: docker-logs
+  #   static_configs:
+  #     - targets:
+  #         - localhost
+  #       labels:
+  #         job: docker
+  #         __path__: /var/lib/docker/containers/*/*.log 

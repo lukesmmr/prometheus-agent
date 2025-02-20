@@ -19,7 +19,7 @@ services:
       - MAIN_INSTANCE_PRIVATE_IP=${MAIN_INSTANCE_PRIVATE_IP}
     volumes:
       - "/var/log:/var/log:ro"
-      - "/var/lib/docker/containers:/var/lib/docker/containers:ro"
+      # - "/var/lib/docker/containers:/var/lib/docker/containers:ro"
       - "./promtail-config.yaml:/etc/promtail/promtail.yaml:ro"
     command:
       - -config.file=/etc/promtail/promtail.yaml
