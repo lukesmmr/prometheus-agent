@@ -8,6 +8,7 @@ positions:
 
 clients:
   - url: "http://${MAIN_INSTANCE_PRIVATE_IP}:3100/loki/api/v1/push"
+tenant_id: "client"
 
 scrape_configs:
   # Scrape system logs from /var/log
