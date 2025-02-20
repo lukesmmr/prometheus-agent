@@ -40,8 +40,8 @@ if [ "$MOCK_MODE" -eq 1 ]; then
     export MAIN_INSTANCE_PRIVATE_IP=127.0.0.1
 fi
 
-# Use docker-compose commands for service control
-DOCKER_COMPOSE="docker-compose"
+# Use docker compose commands for service control
+DOCKER_COMPOSE="docker compose"
 
 case "$ACTION" in
     start)

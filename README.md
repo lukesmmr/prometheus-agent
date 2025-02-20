@@ -84,7 +84,7 @@ This project now uses environment variables to configure the main instance's pri
 
    From the directory containing your files, run:
    ```bash
-   docker-compose up -d
+   docker compose up -d
    ```
    This will start the three services in detached mode.
 
@@ -96,11 +96,11 @@ This project now uses environment variables to configure the main instance's pri
      ```
    - Review the logs of the **promtail** service to ensure it's tailing files and pushing logs:
      ```bash
-     docker-compose logs promtail
+     docker logs promtail
      ```
    - Confirm that **ping-agent** shows continuous pings (you can inspect its logs):
      ```bash
-     docker-compose logs ping-agent
+     docker logs ping-agent
      ```
 
 5. **Configure Grafana**
@@ -119,7 +119,7 @@ This project now uses environment variables to configure the main instance's pri
 ## Troubleshooting
 
 - If logs are not showing up in Grafana, first ensure that the main instance's Loki endpoint is accessible from the agent (try curling \`http://<MAIN_INSTANCE_PRIVATE_IP>:3100/loki/api/v1/push\` from the agent).
-- Use \`docker-compose logs\` to review individual service logs.  
+- Use \`docker logs\` to review individual service logs.  
 - Verify that Docker volumes are correctly mounted and that your log paths exist on the host.
 
 Happy monitoring!
@@ -176,7 +176,7 @@ To simplify managing the logging agent's Docker services (i.e., **node-exporter*
 
 ### Notes
 
-- The control script utilizes `docker-compose` under the hood, so ensure that Docker Compose is installed and the `docker-compose.yml` file is present in your project directory.
+- The control script utilizes `docker compose` under the hood, so ensure that Docker Compose is installed and the `docker-compose.yml` file is present in your project directory.
 - The `--mock` flag is especially helpful for local testing, allowing you to simulate the environment without affecting the production setup by overriding the main instance IP.
 
 By integrating this script into your workflow, you can easily manage your logging agent services both in production and for local testing. 
