@@ -7,7 +7,7 @@ services:
     pid: "host"
     restart: always
     command:
-      - '--web.listen-address=:9090'
+      - '--web.listen-address=:9101'
     volumes:
       - "/proc:/host/proc:ro"
       - "/sys:/host/sys:ro"

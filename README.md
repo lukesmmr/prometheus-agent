@@ -58,7 +58,7 @@ This project now uses environment variables to configure the main instance's pri
 
 - An **Ubuntu EC2 instance** with Docker and Docker Compose installed.
 - Ensure that your AWS security groups allow communication from the agent instance to the main EC2 instance over the required ports:
-  - For **node_exporter**: TCP port 9090 (if your aggregator/prometheus needs to scrape metrics).
+  - For **node_exporter**: TCP port 9101 (if your aggregator/prometheus needs to scrape metrics).
   - For **promtail**: TCP port 3100 (or whichever port your Loki endpoint listens on).
   - For **ping-agent**: ICMP must be allowed.
 - A main EC2 instance running Grafana with a **Loki** (or compatible) log ingestion endpoint. (In the promtail config, update the \`clients.url\` accordingly.)
@@ -90,9 +90,9 @@ This project now uses environment variables to configure the main instance's pri
 
 4. **Verify the Setup**
 
-   - Check that **node-exporter** is running and accessible on port 9090:
+   - Check that **node-exporter** is running and accessible on port 9101:
      ```bash
-     curl http://localhost:9090/metrics
+     curl http://localhost:9101/metrics
      ```
    - Review the logs of the **promtail** service to ensure it's tailing files and pushing logs:
      ```bash
