@@ -11,6 +11,11 @@ This repository provides a simple, lightweight logging and metrics agent to run 
 3. **ping-agent**  
    Pings the main EC2 instance via its private IP every 60 seconds to ensure that the connection is up.
 
+## TODO
+
+* Enable Docker logs to be passed to main EC2 instance
+* Allow promtail streams to be consumed in main EC2 instance Grafana UI (not yet tested)
+
 ## Environment Configuration
 
 This project now uses environment variables to configure the main instance's private IP. The value is read from a `.env` file located at the repo root.
