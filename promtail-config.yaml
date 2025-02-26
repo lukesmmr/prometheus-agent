@@ -21,51 +21,6 @@ scrape_configs:
           host: client
           __path__: /var/log/{syslog,messages,dmesg,cloud-init.log}
 
-  # node-exporter container
-  - job_name: node-exporter
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: docker
-          host: client
-          container: node_exporter
-          __path__: /var/lib/docker/containers/*node_exporter*/*.log
-
-  # promtail container
-  - job_name: promtail
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: docker
-          host: client
-          container: promtail
-          __path__: /var/lib/docker/containers/*promtail*/*.log
-
-  # ping-agent container
-  - job_name: ping-agent
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: docker
-          host: client
-          container: ping_agent
-          __path__: /var/lib/docker/containers/*ping_agent*/*.log
-
-  # Other Docker containers (e.g. DB)
-  - job_name: other-containers
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: docker
-          host: client
-          container: other
-          __path__: /var/lib/docker/containers/*.log
-
-    # Simple pipeline to handle timestamps
     pipeline_stages:
       - timestamp:
           source: time
@@ -74,3 +29,123 @@ scrape_configs:
             - RFC3339
             - UnixMs
           location: UTC
+
+  # Node-exporter container
+  - job_name: node-exporter
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker
+          host: client
+          container: node_exporter
+          __path__: /var/lib/docker/containers/*/*-json.log
+
+    pipeline_stages:
+      - timestamp:
+          source: time
+          format: RFC3339Nano
+          fallback_formats:
+            - RFC3339
+            - UnixMs
+          location: UTC
+      - json:
+          expressions:
+            log: log
+            stream: stream
+            container_name: attrs.name
+      - match:
+          selector: '{container_name="node_exporter"}'
+          action: keep
+      - labels:
+          stream:
+
+  # Promtail container
+  - job_name: promtail
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker
+          host: client
+          container: promtail
+          __path__: /var/lib/docker/containers/*/*-json.log
+
+    pipeline_stages:
+      - timestamp:
+          source: time
+          format: RFC3339Nano
+          fallback_formats:
+            - RFC3339
+            - UnixMs
+          location: UTC
+      - json:
+          expressions:
+            log: log
+            stream: stream
+            container_name: attrs.name
+      - match:
+          selector: '{container_name="promtail"}'
+          action: keep
+      - labels:
+          stream:
+
+  # Ping-agent container
+  - job_name: ping-agent
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker
+          host: client
+          container: ping_agent
+          __path__: /var/lib/docker/containers/*/*-json.log
+
+    pipeline_stages:
+      - timestamp:
+          source: time
+          format: RFC3339Nano
+          fallback_formats:
+            - RFC3339
+            - UnixMs
+          location: UTC
+      - json:
+          expressions:
+            log: log
+            stream: stream
+            container_name: attrs.name
+      - match:
+          selector: '{container_name="ping_agent"}'
+          action: keep
+      - labels:
+          stream:
+
+  # DB container
+  - job_name: db
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker
+          host: client
+          container: mongodb
+          __path__: /var/lib/docker/containers/*/*-json.log
+
+    pipeline_stages:
+      - timestamp:
+          source: time
+          format: RFC3339Nano
+          fallback_formats:
+            - RFC3339
+            - UnixMs
+          location: UTC
+      - json:
+          expressions:
+            log: log
+            stream: stream
+            container_name: attrs.name
+      - match:
+          selector: '{container_name="mongodb"}'
+          action: keep
+      - labels:
+          stream:
