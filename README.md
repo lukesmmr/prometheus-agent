@@ -11,11 +11,6 @@ This repository provides a simple, lightweight logging and metrics agent to run 
 3. **ping-agent**  
    Pings the main EC2 instance via its private IP every 60 seconds to ensure that the connection is up.
 
-## TODO
-
-* Enable Docker logs to be passed to main EC2 instance
-* Allow promtail streams to be consumed in main EC2 instance Grafana UI (not yet tested)
-
 ## Environment Configuration
 
 This project now uses environment variables to configure the main instance's private IP. The value is read from a `.env` file located at the repo root.
@@ -184,4 +179,27 @@ To simplify managing the logging agent's Docker services (i.e., **node-exporter*
 - The control script utilizes `docker compose` under the hood, so ensure that Docker Compose is installed and the `docker-compose.yml` file is present in your project directory.
 - The `--mock` flag is especially helpful for local testing, allowing you to simulate the environment without affecting the production setup by overriding the main instance IP.
 
-By integrating this script into your workflow, you can easily manage your logging agent services both in production and for local testing. 
+By integrating this script into your workflow, you can easily manage your logging agent services both in production and for local testing.
+
+## Security Considerations
+
+This logging and metrics agent is designed to operate within a private network environment (such as AWS VPC) and relies on proper network security controls to maintain its security posture. Please review the following security considerations before deployment:
+
+### Network Security Requirements
+
+- **Private Network Operation**: This solution should only be deployed within a private network (e.g., AWS VPC) where agents and the main instance communicate over private IP addresses.
+
+- **Security Group Configuration**: Properly configure security groups or firewall rules to:
+  - Allow only the main Grafana/Loki instance to access the node-exporter metrics endpoint (port 9101)
+  - Allow only necessary communication between agent instances and the main instance
+  - Restrict all other inbound traffic to these services
+
+- **No Public Exposure**: Never expose the node-exporter or promtail endpoints to the public internet
+
+To enhance the security of this solution one could:
+
+1. **Enable TLS**: Update the Loki endpoint URL to use HTTPS and configure proper certificates
+2. **Add Authentication**: Implement basic auth for the Loki push API
+3. **Container Hardening**: Add user specifications and capability restrictions to the Docker Compose file
+4. **Network Segmentation**: Use AWS security groups to strictly control traffic between components
+5. **Persistent Storage**: Move the positions file from `/tmp` to a persistent, secure location
