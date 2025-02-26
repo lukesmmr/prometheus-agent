@@ -9,10 +9,15 @@ positions:
 clients:
   - url: "http://${MAIN_INSTANCE_PRIVATE_IP}:3100/loki/api/v1/push"
     tenant_id: "default"
-    # Add rate limiting
-    rate_limit_cfg:
-      rate: 2
-      burst_size: 5
+    # Correct field name for rate limiting
+    external_labels:
+      host: ${HOSTNAME}
+    backoff_config:
+      min_period: 100ms
+      max_period: 10s
+      max_retries: 10
+    batchwait: 1s
+    batchsize: 1048576  # 1MB
 
 scrape_configs:
   # Scrape system logs from /var/log
