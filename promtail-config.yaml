@@ -36,7 +36,7 @@ scrape_configs:
       - docker: {}
       - json:
           expressions:
-            container_name: .container_name
+            container_name: "container_name"
       - labels:
           instance: client
           container_name:
