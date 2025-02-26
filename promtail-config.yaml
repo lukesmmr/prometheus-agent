@@ -56,9 +56,9 @@ scrape_configs:
             container_name: attrs.name
       - match:
           selector: '{container_name="node_exporter"}'
-          action: keep
-      - labels:
-          stream:
+          stages:
+            - labels:
+                stream:
 
   # Promtail container
   - job_name: promtail
@@ -86,9 +86,9 @@ scrape_configs:
             container_name: attrs.name
       - match:
           selector: '{container_name="promtail"}'
-          action: keep
-      - labels:
-          stream:
+          stages:
+            - labels:
+                stream:
 
   # Ping-agent container
   - job_name: ping-agent
@@ -116,9 +116,9 @@ scrape_configs:
             container_name: attrs.name
       - match:
           selector: '{container_name="ping_agent"}'
-          action: keep
-      - labels:
-          stream:
+          stages:
+            - labels:
+                stream:
 
   # DB container
   - job_name: db
@@ -146,6 +146,6 @@ scrape_configs:
             container_name: attrs.name
       - match:
           selector: '{container_name="mongodb"}'
-          action: keep
-      - labels:
-          stream:
+          stages:
+            - labels:
+                stream:
