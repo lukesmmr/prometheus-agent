@@ -34,11 +34,12 @@ scrape_configs:
     # Add pipeline stages to extract Docker metadata
     pipeline_stages:
       - docker: {}
-      - json:
-          expressions:
-            container_name: "container_name"
+      - regex:
+          expression: '.*\/(?P<container_id>[a-f0-9]{64})\.log'
+      - docker:
+          source: container_id
       - labels:
-          instance: client
-          container_name:
+          container: 
       - labeldrop:
           - filename
+          - container_id
