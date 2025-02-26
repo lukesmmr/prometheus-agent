@@ -30,7 +30,6 @@ scrape_configs:
           job: docker
           host: client
           container: node_exporter
-          __path__:
           __path__: /var/lib/docker/containers/*node_exporter*/*.log
 
   # promtail container
