@@ -19,22 +19,58 @@ scrape_configs:
         labels:
           job: system
           host: client
-          __path__: /var/log/**/*.log
+          __path__:
+            - /var/log/syslog         # Critical system log (Ubuntu) for tracking EC2 health events
+            - /var/log/messages       # Critical system log (CentOS/Amazon Linux) for instance health monitoring
+            - /var/log/dmesg          # Kernel messages capturing hardware and boot issues
+            - /var/log/cloud-init.log # Cloud-init log for tracking EC2 initialization and related status events
 
-  # Scrape Docker container logs
-  - job_name: docker-logs
+  # node-exporter container
+  - job_name: node-exporter
     static_configs:
       - targets:
           - localhost
         labels:
           job: docker
           host: client
-          __path__: /var/lib/docker/containers/*/*.log
+          container: node_exporter
+          __path__: /var/lib/docker/containers/*node_exporter*/*.log
 
+  # promtail container
+  - job_name: promtail
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker
+          host: client
+          container: promtail
+          __path__: /var/lib/docker/containers/*promtail*/*.log
+
+  # ping-agent container
+  - job_name: ping-agent
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker
+          host: client
+          container: ping_agent
+          __path__: /var/lib/docker/containers/*ping_agent*/*.log
+
+  # Other Docker containers (e.g. DB)
+  - job_name: other-containers
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker
+          host: client
+          container: other
+          __path__: /var/lib/docker/containers/*.log
+
+    # Simple pipeline to handle timestamps
     pipeline_stages:
-      - output:
-          source: labels
-          
       - timestamp:
           source: time
           format: RFC3339Nano
@@ -42,28 +78,3 @@ scrape_configs:
             - RFC3339
             - UnixMs
           location: UTC
-      
-      - docker: {}
-      
-      - output:
-          source: labels
-      
-      - regex:
-          expression: '(?P<container>.+)'
-          source: container_name
-      
-      - output:
-          source: labels
-      
-      - labels:
-          container:
-      
-      - output:
-          source: labels
-      
-      - labeldrop:
-          - filename
-          - container_name
-          
-      - output:
-          source: labels
