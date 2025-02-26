@@ -19,11 +19,7 @@ scrape_configs:
         labels:
           job: system
           host: client
-          __path__:
-            - /var/log/syslog         # Critical system log (Ubuntu) for tracking EC2 health events
-            - /var/log/messages       # Critical system log (CentOS/Amazon Linux) for instance health monitoring
-            - /var/log/dmesg          # Kernel messages capturing hardware and boot issues
-            - /var/log/cloud-init.log # Cloud-init log for tracking EC2 initialization and related status events
+          __path__: /var/log/{syslog,messages,dmesg,cloud-init.log}
 
   # node-exporter container
   - job_name: node-exporter
@@ -35,7 +31,7 @@ scrape_configs:
           host: client
           container: node_exporter
           __path__:
-            - /var/lib/docker/containers/*node_exporter*/*.log
+          __path__: /var/lib/docker/containers/*node_exporter*/*.log
 
   # promtail container
   - job_name: promtail
@@ -46,8 +42,7 @@ scrape_configs:
           job: docker
           host: client
           container: promtail
-          __path__:
-            - /var/lib/docker/containers/*promtail*/*.log
+          __path__: /var/lib/docker/containers/*promtail*/*.log
 
   # ping-agent container
   - job_name: ping-agent
@@ -58,8 +53,7 @@ scrape_configs:
           job: docker
           host: client
           container: ping_agent
-          __path__:
-            - /var/lib/docker/containers/*ping_agent*/*.log
+          __path__: /var/lib/docker/containers/*ping_agent*/*.log
 
   # Other Docker containers (e.g. DB)
   - job_name: other-containers
@@ -70,8 +64,7 @@ scrape_configs:
           job: docker
           host: client
           container: other
-          __path__:
-            - /var/lib/docker/containers/*.log
+          __path__: /var/lib/docker/containers/*.log
 
     # Simple pipeline to handle timestamps
     pipeline_stages:
