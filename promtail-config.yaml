@@ -32,6 +32,9 @@ scrape_configs:
           __path__: /var/lib/docker/containers/*/*.log
 
     pipeline_stages:
+      - output:
+          source: labels
+          
       - timestamp:
           source: time
           format: RFC3339Nano
@@ -40,37 +43,27 @@ scrape_configs:
             - UnixMs
           location: UTC
       
-      # Debug what we have before Docker stage
-      - output:
-          source: labels
-      
       - docker: {}
       
-      # Debug after Docker stage  
       - output:
           source: labels
       
       - regex:
-          expression: '.*\/(?P<container_id>[a-f0-9]{64})\.log'
+          expression: '(?P<container>.+)'
+          source: container_name
       
-      # Debug after regex
-      - output:
-          source: labels
-      
-      - docker:
-          source: container_id
-      
-      # Debug after second Docker stage
       - output:
           source: labels
       
       - labels:
           container:
       
-      # Final debug
       - output:
           source: labels
       
       - labeldrop:
           - filename
-          - container_id
+          - container_name
+          
+      - output:
+          source: labels
