@@ -9,6 +9,10 @@ positions:
 clients:
   - url: "http://${MAIN_INSTANCE_PRIVATE_IP}:3100/loki/api/v1/push"
     tenant_id: "default"
+    # Add rate limiting
+    rate_limit_cfg:
+      rate: 2
+      burst_size: 5
 
 scrape_configs:
   # Scrape system logs from /var/log
