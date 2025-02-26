@@ -34,7 +34,8 @@ scrape_configs:
           job: docker
           host: client
           container: node_exporter
-          __path__: /var/lib/docker/containers/*node_exporter*/*.log
+          __path__:
+            - /var/lib/docker/containers/*node_exporter*/*.log
 
   # promtail container
   - job_name: promtail
@@ -45,7 +46,8 @@ scrape_configs:
           job: docker
           host: client
           container: promtail
-          __path__: /var/lib/docker/containers/*promtail*/*.log
+          __path__:
+            - /var/lib/docker/containers/*promtail*/*.log
 
   # ping-agent container
   - job_name: ping-agent
@@ -56,7 +58,8 @@ scrape_configs:
           job: docker
           host: client
           container: ping_agent
-          __path__: /var/lib/docker/containers/*ping_agent*/*.log
+          __path__:
+            - /var/lib/docker/containers/*ping_agent*/*.log
 
   # Other Docker containers (e.g. DB)
   - job_name: other-containers
@@ -67,7 +70,8 @@ scrape_configs:
           job: docker
           host: client
           container: other
-          __path__: /var/lib/docker/containers/*.log
+          __path__:
+            - /var/lib/docker/containers/*.log
 
     # Simple pipeline to handle timestamps
     pipeline_stages:
