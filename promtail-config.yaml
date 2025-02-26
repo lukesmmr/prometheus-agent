@@ -31,15 +31,46 @@ scrape_configs:
           host: client
           __path__: /var/lib/docker/containers/*/*.log
 
-    # Add pipeline stages to extract Docker metadata
     pipeline_stages:
+      - timestamp:
+          source: time
+          format: RFC3339Nano
+          fallback_formats:
+            - RFC3339
+            - UnixMs
+          location: UTC
+      
+      # Debug what we have before Docker stage
+      - output:
+          source: labels
+      
       - docker: {}
+      
+      # Debug after Docker stage  
+      - output:
+          source: labels
+      
       - regex:
           expression: '.*\/(?P<container_id>[a-f0-9]{64})\.log'
+      
+      # Debug after regex
+      - output:
+          source: labels
+      
       - docker:
           source: container_id
+      
+      # Debug after second Docker stage
+      - output:
+          source: labels
+      
       - labels:
-          container: 
+          container:
+      
+      # Final debug
+      - output:
+          source: labels
+      
       - labeldrop:
           - filename
           - container_id
