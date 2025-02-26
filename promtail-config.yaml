@@ -13,11 +13,11 @@ clients:
     external_labels:
       host: ${HOSTNAME}
     backoff_config:
-      min_period: 100ms
+      min_period: 500ms
       max_period: 10s
       max_retries: 10
-    batchwait: 1s
-    batchsize: 1048576  # 1MB
+    batchwait: 2s
+    batchsize: 524288  # 512KB
 
 scrape_configs:
   # Scrape system logs from /var/log
