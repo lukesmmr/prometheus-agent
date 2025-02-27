@@ -212,4 +212,3 @@ To enhance the security of this solution one could:
 2. **Network Segmentation**: Use AWS security groups to strictly control traffic between components
 3. **Persistent Storage**: Move the positions file from `/tmp` to a persistent, secure location
 4. **Credential Management**: Use a secure vault solution for managing the basic auth credentials
-5. **TLS Configuration**: Use a secure TLS certificate for the reverse proxy loki endpoint
