@@ -12,6 +12,8 @@ clients:
     basic_auth:
       username: ${LOKI_BASIC_AUTH_USER}
       password: ${LOKI_BASIC_AUTH_PW}
+    tls_config:
+      insecure_skip_verify: true
     external_labels:
       host: ${HOSTNAME}
     backoff_config:
