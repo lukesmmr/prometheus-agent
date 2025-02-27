@@ -18,7 +18,9 @@ services:
     container_name: promtail
     restart: always
     environment:
-      - MAIN_INSTANCE_PRIVATE_IP=${MAIN_INSTANCE_PRIVATE_IP}
+      - DOMAIN_ROOT=${DOMAIN_ROOT}
+      - LOKI_BASIC_AUTH_USER=${LOKI_BASIC_AUTH_USER}
+      - LOKI_BASIC_AUTH_PW=${LOKI_BASIC_AUTH_PW}
     volumes:
       - "/var/log:/var/log:ro"
       - "/var/lib/docker/containers:/var/lib/docker/containers:ro"

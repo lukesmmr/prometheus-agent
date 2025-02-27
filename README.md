@@ -6,14 +6,14 @@ This repository provides a simple, lightweight logging and metrics agent to run 
    Collects host-level metrics. The service is very low on memory and CPU usage.
 
 2. **promtail**  
-   Reads log files (both system logs and Docker container logs) and forwards them to your main EC2 instance running a Grafana custom instance (with a Loki data source configured). It pulls the MAIN instance IP from an environment file.
+   Reads log files (both system logs and Docker container logs) and forwards them to your main EC2 instance running a Grafana custom instance (with a Loki data source configured) through a secure HTTPS connection.
 
 3. **ping-agent**  
    Pings the main EC2 instance via its private IP every 60 seconds to ensure that the connection is up.
 
 ## Environment Configuration
 
-This project now uses environment variables to configure the main instance's private IP. The value is read from a `.env` file located at the repo root.
+This project uses environment variables to configure connections. The values are read from a `.env` file located at the repo root.
 
 ### Setup .env
 
@@ -22,19 +22,22 @@ This project now uses environment variables to configure the main instance's pri
    cp .env.template .env
    ```
 
-2. Open the `.env` file and replace the placeholder with your main instance's private IP:
+2. Open the `.env` file and update with your values:
    ```env
    MAIN_INSTANCE_PRIVATE_IP=10.0.1.5
+   DOMAIN_ROOT=your-grafana-domain.example.com
+   LOKI_BASIC_AUTH_USER=your-username
+   LOKI_BASIC_AUTH_PW=your-secure-password
    ```
 
 ### Usage in Configurations
 
 - **Promtail Configuration:**  
-  In `promtail-config.yaml`, the Loki push client URL is configured to use the `MAIN_INSTANCE_PRIVATE_IP` variable:
-  \[
-  "http://${MAIN_INSTANCE_PRIVATE_IP}:3100/loki/api/v1/push"
-  \]
-  If not already part of your container image, you may need to run a substitution step (e.g., with `envsubst`) to generate the final config file before launching promtail.
+  In `promtail-config.yaml`, the Loki push client URL is configured to use HTTPS with your domain:
+  ```
+  https://${DOMAIN_ROOT}/loki/api/v1/push
+  ```
+  This allows secure log transmission through a reverse proxy with TLS, instead of direct IP access.
 
 - **Ping Agent (Docker Compose):**  
   The `ping-agent` service in the `docker-compose.yml` file uses:
@@ -49,7 +52,7 @@ This project now uses environment variables to configure the main instance's pri
   [node_exporter](https://github.com/prometheus/node_exporter) runs in a container using host networking and exports metrics (e.g., from \`/proc\` and \`/sys\`) on port 9100. Your main instance (or Prometheus) can scrape these metrics.
 
 - **Log Collection:**  
-  [promtail](https://grafana.com/docs/loki/latest/clients/promtail/) tails system logs (from \`/var/log\`) and Docker container logs (from \`/var/lib/docker/containers\`). It then pushes them to a Loki endpoint running on your main EC2 instance. (Make sure your Grafana Loki—or other log ingress service—is configured to accept logs from this agent.)
+  [promtail](https://grafana.com/docs/loki/latest/clients/promtail/) tails system logs (from \`/var/log\`) and Docker container logs (from \`/var/lib/docker/containers\`). It then pushes them securely over HTTPS to a Loki endpoint running behind a reverse proxy. Authentication is handled via basic auth.
 
 - **Connectivity Checker:**  
   A simple Alpine-based container pings your main instance's private IP periodically. This is useful for alerting if network connectivity fails.
@@ -59,9 +62,9 @@ This project now uses environment variables to configure the main instance's pri
 - An **Ubuntu EC2 instance** with Docker and Docker Compose installed.
 - Ensure that your AWS security groups allow communication from the agent instance to the main EC2 instance over the required ports:
   - For **node_exporter**: TCP port 9101 (if your aggregator/prometheus needs to scrape metrics).
-  - For **promtail**: TCP port 3100 (or whichever port your Loki endpoint listens on).
+  - For **promtail**: HTTPS (port 443) to your domain with reverse proxy.
   - For **ping-agent**: ICMP must be allowed.
-- A main EC2 instance running Grafana with a **Loki** (or compatible) log ingestion endpoint. (In the promtail config, update the \`clients.url\` accordingly.)
+- A main EC2 instance running Grafana with a **Loki** (or compatible) log ingestion endpoint behind a reverse proxy with TLS.
 
 ## Setup Instructions
 
@@ -74,10 +77,10 @@ This project now uses environment variables to configure the main instance's pri
 
 2. **Configure the Environment**
 
-   Copy the environment template and update the MAIN instance's IP:
+   Copy the environment template and update the values:
    ```bash
    cp .env.template .env
-   # Then edit the .env file to specify your MAIN_INSTANCE_PRIVATE_IP value.
+   # Then edit the .env file to specify your MAIN_INSTANCE_PRIVATE_IP, DOMAIN_ROOT, and LOKI_BASIC_AUTH_USER and LOKI_BASIC_AUTH_PW values.
    ```
 
 3. **Launch the Agent via Docker Compose**
@@ -105,20 +108,25 @@ This project now uses environment variables to configure the main instance's pri
 
 5. **Configure Grafana**
 
-   - In your Grafana custom instance on the main EC2 instance, add a new data source pointing to the Loki endpoint (e.g., \`http://10.0.1.5:3100\`) so that logs from the agents are visible.
+   - In your Grafana custom instance on the main EC2 instance, ensure your Loki data source is properly configured.
+   - Set up your reverse proxy to forward requests from `https://your-domain.com/loki/api/v1/push` to your Loki instance.
+   - Configure basic authentication in your reverse proxy to match the credentials used in the promtail configuration.
    - Also add your node-exporter endpoints (using the private IPs of your agents) as metrics sources if needed.
 
 ## Notes & Considerations
 
 - **Simplicity:** This solution emphasizes a simple codebase to reduce overhead and maintenance complexity.
+- **Security:** Logs are transmitted securely over HTTPS with basic authentication.
 - **Security Groups:** Double-check that the security groups for your EC2 instances allow the required traffic between agents and the main Grafana/Loki instance.
 - **Customization:** Feel free to expand the promtail \`scrape_configs\` if you need to include additional log paths.
-- **Environment Variable Processing:**  
-  Ensure that if your Promtail container does not support environment variable substitution natively, you preprocess `promtail-config.yaml` using a tool like `envsubst`.
+- **Environment Variable Processing:** Promtail is configured with `-config.expand-env=true` to support environment variable substitution.
 
 ## Troubleshooting
 
-- If logs are not showing up in Grafana, first ensure that the main instance's Loki endpoint is accessible from the agent (try curling \`http://<MAIN_INSTANCE_PRIVATE_IP>:3100/loki/api/v1/push\` from the agent).
+- If logs are not showing up in Grafana, ensure that:
+  - Your reverse proxy is correctly forwarding requests to Loki
+  - The basic auth credentials are correct
+  - Your domain is properly configured with valid TLS certificates
 - Use \`docker logs\` to review individual service logs.  
 - Verify that Docker volumes are correctly mounted and that your log paths exist on the host.
 
@@ -139,13 +147,13 @@ To simplify managing the logging agent's Docker services (i.e., **node-exporter*
 2. **Starting the Services:**
 
    - **Normal Mode:**  
-     This uses the `MAIN_INSTANCE_PRIVATE_IP` defined in your `.env` file.
+     This uses the environment variables defined in your `.env` file.
      ```bash
      ./agent-control.sh start
      ```
      
    - **Mock Mode:**  
-     For local testing, you can override the `MAIN_INSTANCE_PRIVATE_IP` environment variable with `127.0.0.1` using the `--mock` flag.
+     For local testing, you can override the environment with mock values using the `--mock` flag.
      ```bash
      ./agent-control.sh start --mock
      ```
@@ -177,7 +185,7 @@ To simplify managing the logging agent's Docker services (i.e., **node-exporter*
 ### Notes
 
 - The control script utilizes `docker compose` under the hood, so ensure that Docker Compose is installed and the `docker-compose.yml` file is present in your project directory.
-- The `--mock` flag is especially helpful for local testing, allowing you to simulate the environment without affecting the production setup by overriding the main instance IP.
+- The `--mock` flag is especially helpful for local testing, allowing you to simulate the environment without affecting the production setup by overriding the environment variables.
 
 By integrating this script into your workflow, you can easily manage your logging agent services both in production and for local testing.
 
@@ -189,6 +197,8 @@ This logging and metrics agent is designed to operate within a private network e
 
 - **Private Network Operation**: This solution should only be deployed within a private network (e.g., AWS VPC) where agents and the main instance communicate over private IP addresses.
 
+- **Secure Log Transmission**: Logs are transmitted securely over HTTPS with basic authentication to prevent unauthorized access.
+
 - **Security Group Configuration**: Properly configure security groups or firewall rules to:
   - Allow only the main Grafana/Loki instance to access the node-exporter metrics endpoint (port 9101)
   - Allow only necessary communication between agent instances and the main instance
@@ -198,8 +208,7 @@ This logging and metrics agent is designed to operate within a private network e
 
 To enhance the security of this solution one could:
 
-1. **Enable TLS**: Update the Loki endpoint URL to use HTTPS and configure proper certificates
-2. **Add Authentication**: Implement basic auth for the Loki push API
-3. **Container Hardening**: Add user specifications and capability restrictions to the Docker Compose file
-4. **Network Segmentation**: Use AWS security groups to strictly control traffic between components
-5. **Persistent Storage**: Move the positions file from `/tmp` to a persistent, secure location
+1. **Container Hardening**: Add user specifications and capability restrictions to the Docker Compose file
+2. **Network Segmentation**: Use AWS security groups to strictly control traffic between components
+3. **Persistent Storage**: Move the positions file from `/tmp` to a persistent, secure location
+4. **Credential Management**: Use a secure vault solution for managing the basic auth credentials

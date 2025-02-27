@@ -34,10 +34,12 @@ if [ "$#" -eq 2 ]; then
     fi
 fi
 
-# If in mock mode, override MAIN_INSTANCE_PRIVATE_IP with a local address
+# If in mock mode, override environment variables with local values
 if [ "$MOCK_MODE" -eq 1 ]; then
-    echo "Running in MOCK mode. Overriding MAIN_INSTANCE_PRIVATE_IP to 127.0.0.1."
+    echo "Running in MOCK mode. Overriding environment variables for local testing."
     export MAIN_INSTANCE_PRIVATE_IP=127.0.0.1
+    export DOMAIN_ROOT=localhost
+    # Keep the password as-is for authentication testing
 fi
 
 # Use docker compose commands for service control

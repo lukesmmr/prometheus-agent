@@ -7,9 +7,11 @@ positions:
   filename: /tmp/positions.yaml
 
 clients:
-  - url: "http://${MAIN_INSTANCE_PRIVATE_IP}:3100/loki/api/v1/push"
+  - url: "https://${DOMAIN_ROOT}/loki/api/v1/push"
     tenant_id: "default"
-    # Correct field name for rate limiting
+    basic_auth:
+      username: ${LOKI_BASIC_AUTH_USER}
+      password: ${LOKI_BASIC_AUTH_PW}
     external_labels:
       host: ${HOSTNAME}
     backoff_config:
