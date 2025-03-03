@@ -18,7 +18,6 @@ services:
     container_name: promtail
     restart: always
     environment:
-      - DOMAIN_ROOT=${DOMAIN_ROOT}
       - LOKI_BASIC_AUTH_USER=${LOKI_BASIC_AUTH_USER}
       - LOKI_BASIC_AUTH_PW=${LOKI_BASIC_AUTH_PW}
     volumes:

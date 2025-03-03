@@ -6,7 +6,7 @@ This repository provides a simple, lightweight logging and metrics agent to run 
    Collects host-level metrics. The service is very low on memory and CPU usage.
 
 2. **promtail**  
-   Reads log files (both system logs and Docker container logs) and forwards them to your main EC2 instance running a Grafana custom instance (with a Loki data source configured) through a secure HTTPS connection.
+   Reads log files (both system logs and Docker container logs) and forwards them to your main EC2 instance running a Grafana custom instance (with a Loki data source configured) through a direct HTTP connection over private IP.
 
 3. **ping-agent**  
    Pings the main EC2 instance via its private IP every 60 seconds to ensure that the connection is up.
@@ -25,7 +25,6 @@ This project uses environment variables to configure connections. The values are
 2. Open the `.env` file and update with your values:
    ```env
    MAIN_INSTANCE_PRIVATE_IP=10.0.1.5
-   DOMAIN_ROOT=your-grafana-domain.example.com
    LOKI_BASIC_AUTH_USER=your-username
    LOKI_BASIC_AUTH_PW=your-secure-password
    ```
@@ -33,11 +32,11 @@ This project uses environment variables to configure connections. The values are
 ### Usage in Configurations
 
 - **Promtail Configuration:**  
-  In `promtail-config.yaml`, the Loki push client URL is configured to use HTTPS with your domain:
+  In `promtail-config.yaml`, the Loki push client URL is configured to use HTTP with your private IP:
   ```
-  https://${DOMAIN_ROOT}/loki/api/v1/push
+  http://${MAIN_INSTANCE_PRIVATE_IP}/loki/api/v1/push
   ```
-  This allows secure log transmission through a reverse proxy with TLS, instead of direct IP access.
+  This allows direct communication over your private network, which is secured by AWS security groups.
 
 - **Ping Agent (Docker Compose):**  
   The `ping-agent` service in the `docker-compose.yml` file uses:
@@ -52,7 +51,7 @@ This project uses environment variables to configure connections. The values are
   [node_exporter](https://github.com/prometheus/node_exporter) runs in a container using host networking and exports metrics (e.g., from \`/proc\` and \`/sys\`) on port 9100. Your main instance (or Prometheus) can scrape these metrics.
 
 - **Log Collection:**  
-  [promtail](https://grafana.com/docs/loki/latest/clients/promtail/) tails system logs (from \`/var/log\`) and Docker container logs (from \`/var/lib/docker/containers\`). It then pushes them securely over HTTPS to a Loki endpoint running behind a reverse proxy. Authentication is handled via basic auth.
+  [promtail](https://grafana.com/docs/loki/latest/clients/promtail/) tails system logs (from \`/var/log\`) and Docker container logs (from \`/var/lib/docker/containers\`). It then pushes them over HTTP to a Loki endpoint on your main instance. Authentication is handled via basic auth.
 
 - **Connectivity Checker:**  
   A simple Alpine-based container pings your main instance's private IP periodically. This is useful for alerting if network connectivity fails.
@@ -62,9 +61,9 @@ This project uses environment variables to configure connections. The values are
 - An **Ubuntu EC2 instance** with Docker and Docker Compose installed.
 - Ensure that your AWS security groups allow communication from the agent instance to the main EC2 instance over the required ports:
   - For **node_exporter**: TCP port 9101 (if your aggregator/prometheus needs to scrape metrics).
-  - For **promtail**: HTTPS (port 443) to your domain with reverse proxy.
+  - For **promtail**: HTTP (typically port 80 or 3100 for Loki) to your main instance's private IP.
   - For **ping-agent**: ICMP must be allowed.
-- A main EC2 instance running Grafana with a **Loki** (or compatible) log ingestion endpoint behind a reverse proxy with TLS.
+- A main EC2 instance running Grafana with a **Loki** (or compatible) log ingestion endpoint.
 
 ## Setup Instructions
 
@@ -80,7 +79,7 @@ This project uses environment variables to configure connections. The values are
    Copy the environment template and update the values:
    ```bash
    cp .env.template .env
-   # Then edit the .env file to specify your MAIN_INSTANCE_PRIVATE_IP, DOMAIN_ROOT, and LOKI_BASIC_AUTH_USER and LOKI_BASIC_AUTH_PW values.
+   # Then edit the .env file to specify your MAIN_INSTANCE_PRIVATE_IP, LOKI_BASIC_AUTH_USER, and LOKI_BASIC_AUTH_PW values.
    ```
 
 3. **Launch the Agent via Docker Compose**
@@ -116,7 +115,7 @@ This project uses environment variables to configure connections. The values are
 ## Notes & Considerations
 
 - **Simplicity:** This solution emphasizes a simple codebase to reduce overhead and maintenance complexity.
-- **Security:** Logs are transmitted securely over HTTPS with basic authentication.
+- **Security:** Logs are transmitted over HTTP with basic authentication within your private network.
 - **Security Groups:** Double-check that the security groups for your EC2 instances allow the required traffic between agents and the main Grafana/Loki instance.
 - **Customization:** Feel free to expand the promtail \`scrape_configs\` if you need to include additional log paths.
 - **Environment Variable Processing:** Promtail is configured with `-config.expand-env=true` to support environment variable substitution.
@@ -124,9 +123,9 @@ This project uses environment variables to configure connections. The values are
 ## Troubleshooting
 
 - If logs are not showing up in Grafana, ensure that:
-  - Your reverse proxy is correctly forwarding requests to Loki
+  - Your Loki instance is correctly configured to receive HTTP requests
   - The basic auth credentials are correct
-  - Your domain is properly configured with valid TLS certificates
+  - Your security groups allow traffic on the required ports
 - Use \`docker logs\` to review individual service logs.  
 - Verify that Docker volumes are correctly mounted and that your log paths exist on the host.
 
@@ -197,7 +196,10 @@ This logging and metrics agent is designed to operate within a private network e
 
 - **Private Network Operation**: This solution should only be deployed within a private network (e.g., AWS VPC) where agents and the main instance communicate over private IP addresses.
 
-- **Secure Log Transmission**: Logs are transmitted securely over HTTPS with basic authentication to prevent unauthorized access.
+- **Non-Encrypted Traffic**: This solution uses HTTP instead of HTTPS for log transmission. This is acceptable ONLY because:
+  1. All traffic stays within your private VPC network
+  2. AWS security groups restrict access to only authorized instances
+  3. The traffic never traverses the public internet
 
 - **Security Group Configuration**: Properly configure security groups or firewall rules to:
   - Allow only the main Grafana/Loki instance to access the node-exporter metrics endpoint (port 9101)
@@ -205,6 +207,10 @@ This logging and metrics agent is designed to operate within a private network e
   - Restrict all other inbound traffic to these services
 
 - **No Public Exposure**: Never expose the node-exporter or promtail endpoints to the public internet
+
+### Important Security Warning
+
+If your architecture changes and traffic needs to traverse the public internet or untrusted networks, you MUST reconfigure this solution to use HTTPS with proper TLS certificates.
 
 To enhance the security of this solution one could:
 

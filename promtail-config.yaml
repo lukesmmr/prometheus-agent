@@ -7,7 +7,7 @@ positions:
   filename: /tmp/positions.yaml
 
 clients:
-  - url: "https://${DOMAIN_ROOT}/loki/api/v1/push"
+  - url: "http://${MAIN_INSTANCE_PRIVATE_IP}/loki/api/v1/push"
     tenant_id: "default"
     basic_auth:
       username: ${LOKI_BASIC_AUTH_USER}

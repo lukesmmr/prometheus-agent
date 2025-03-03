@@ -38,7 +38,6 @@ fi
 if [ "$MOCK_MODE" -eq 1 ]; then
     echo "Running in MOCK mode. Overriding environment variables for local testing."
     export MAIN_INSTANCE_PRIVATE_IP=127.0.0.1
-    export DOMAIN_ROOT=localhost
     # Keep the password as-is for authentication testing
 fi
 
