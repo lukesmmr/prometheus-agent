@@ -94,29 +94,40 @@ scrape_configs:
             container_name: attrs.name
             image: attrs.image
 
-      # Web application containers
+      # Web application containers (if pattern is set)
       - match:
-          selector: '{container_name=~"${WEBAPP_CONTAINER_PATTERN:}"}'
+          selector: '{container_name=~".+"}'
           stages:
+            - regex:
+                expression: "${WEBAPP_CONTAINER_PATTERN:no-match-pattern}"
+                source: container_name
+                action_on_failure: skip
             - labels:
                 app: webapp
                 service: webapp
                 port: ${WEBAPP_PORT:-}
 
-      # Web server containers (includes Caddy, Nginx, etc.)
+      # Web server containers (if pattern is set)
       - match:
-          selector: '{container_name=~"${WEBSERVER_CONTAINER_PATTERN:}"}'
+          selector: '{container_name=~".+"}'
           stages:
+            - regex:
+                expression: "${WEBSERVER_CONTAINER_PATTERN:no-match-pattern}"
+                source: container_name
+                action_on_failure: skip
             - labels:
                 app: webserver
                 service: webserver
                 port: ${WEBSERVER_PORT:-}
-                log_type: ${log_type:-container}  # Will be 'container' for Docker logs
 
-      # Database containers
+      # Database containers (if pattern is set)
       - match:
-          selector: '{container_name=~"${DATABASE_CONTAINER_PATTERN:}"}'
+          selector: '{container_name=~".+"}'
           stages:
+            - regex:
+                expression: "${DATABASE_CONTAINER_PATTERN:no-match-pattern}"
+                source: container_name
+                action_on_failure: skip
             - labels:
                 app: database
                 service: database
@@ -124,21 +135,29 @@ scrape_configs:
 
       # Custom container 1 (if defined)
       - match:
-          selector: '{container_name=~"${CUSTOM_CONTAINER_1%%|*:}"}'
+          selector: '{container_name=~".+"}'
           stages:
+            - regex:
+                expression: "${CUSTOM_CONTAINER_1%%|*:no-match-pattern}"
+                source: container_name
+                action_on_failure: skip
             - labels:
-                app: ${CUSTOM_CONTAINER_1#*|%%|*}
-                service: ${CUSTOM_CONTAINER_1#*|#*|}
-                port: ${CUSTOM_CONTAINER_1##*|}
+                app: ${CUSTOM_CONTAINER_1#*|%%|*:}
+                service: ${CUSTOM_CONTAINER_1#*|#*|:}
+                port: ${CUSTOM_CONTAINER_1##*|:}
 
       # Custom container 2 (if defined)
       - match:
-          selector: '{container_name=~"${CUSTOM_CONTAINER_2%%|*:}"}'
+          selector: '{container_name=~".+"}'
           stages:
+            - regex:
+                expression: "${CUSTOM_CONTAINER_2%%|*:no-match-pattern}"
+                source: container_name
+                action_on_failure: skip
             - labels:
-                app: ${CUSTOM_CONTAINER_2#*|%%|*}
-                service: ${CUSTOM_CONTAINER_2#*|#*|}
-                port: ${CUSTOM_CONTAINER_2##*|}
+                app: ${CUSTOM_CONTAINER_2#*|%%|*:}
+                service: ${CUSTOM_CONTAINER_2#*|#*|:}
+                port: ${CUSTOM_CONTAINER_2##*|:}
 
       # Add common labels for all containers
       - labels:
