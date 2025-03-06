@@ -9,9 +9,6 @@ positions:
 clients:
   - url: "http://${MAIN_INSTANCE_PRIVATE_IP}/loki/api/v1/push"
     tenant_id: "default"
-    basic_auth:
-      username: ${LOKI_BASIC_AUTH_USER}
-      password: ${LOKI_BASIC_AUTH_PW}
     external_labels:
       host: ${HOSTNAME}
     backoff_config:
@@ -22,7 +19,7 @@ clients:
     batchsize: 524288  # 512KB
 
 scrape_configs:
-  # Scrape system logs from /var/log
+  # System logs
   - job_name: system-logs
     static_configs:
       - targets:
@@ -41,15 +38,15 @@ scrape_configs:
             - UnixMs
           location: UTC
 
-  # Node-exporter container
-  - job_name: node-exporter
+  # Agent containers (node-exporter, promtail, ping-agent)
+  - job_name: agent-containers
     static_configs:
       - targets:
           - localhost
         labels:
           job: docker
           host: client
-          container: node_exporter
+          app: monitoring
           __path__: /var/lib/docker/containers/*/*-json.log
 
     pipeline_stages:
@@ -66,20 +63,20 @@ scrape_configs:
             stream: stream
             container_name: attrs.name
       - match:
-          selector: '{container_name="node_exporter"}'
+          selector: '{container_name=~"node_exporter|promtail|ping_agent"}'
           stages:
             - labels:
                 stream:
+                container_name:
 
-  # Promtail container
-  - job_name: promtail
+  # Application containers
+  - job_name: application-containers
     static_configs:
       - targets:
           - localhost
         labels:
           job: docker
           host: client
-          container: promtail
           __path__: /var/lib/docker/containers/*/*-json.log
 
     pipeline_stages:
@@ -95,68 +92,56 @@ scrape_configs:
             log: log
             stream: stream
             container_name: attrs.name
+            image: attrs.image
+
+      # Web application containers
       - match:
-          selector: '{container_name="promtail"}'
+          selector: '{container_name=~"${WEBAPP_CONTAINER_PATTERN:}"}'
           stages:
             - labels:
-                stream:
+                app: webapp
+                service: webapp
+                port: ${WEBAPP_PORT:-}
 
-  # Ping-agent container
-  - job_name: ping-agent
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: docker
-          host: client
-          container: ping_agent
-          __path__: /var/lib/docker/containers/*/*-json.log
-
-    pipeline_stages:
-      - timestamp:
-          source: time
-          format: RFC3339Nano
-          fallback_formats:
-            - RFC3339
-            - UnixMs
-          location: UTC
-      - json:
-          expressions:
-            log: log
-            stream: stream
-            container_name: attrs.name
+      # Web server containers (includes Caddy, Nginx, etc.)
       - match:
-          selector: '{container_name="ping_agent"}'
+          selector: '{container_name=~"${WEBSERVER_CONTAINER_PATTERN:}"}'
           stages:
             - labels:
-                stream:
+                app: webserver
+                service: webserver
+                port: ${WEBSERVER_PORT:-}
+                log_type: ${log_type:-container}  # Will be 'container' for Docker logs
 
-  # DB container
-  - job_name: db
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: docker
-          host: client
-          container: mongodb
-          __path__: /var/lib/docker/containers/*/*-json.log
-
-    pipeline_stages:
-      - timestamp:
-          source: time
-          format: RFC3339Nano
-          fallback_formats:
-            - RFC3339
-            - UnixMs
-          location: UTC
-      - json:
-          expressions:
-            log: log
-            stream: stream
-            container_name: attrs.name
+      # Database containers
       - match:
-          selector: '{container_name="mongodb"}'
+          selector: '{container_name=~"${DATABASE_CONTAINER_PATTERN:}"}'
           stages:
             - labels:
-                stream:
+                app: database
+                service: database
+                port: ${DATABASE_PORT:-}
+
+      # Custom container 1 (if defined)
+      - match:
+          selector: '{container_name=~"${CUSTOM_CONTAINER_1%%|*:}"}'
+          stages:
+            - labels:
+                app: ${CUSTOM_CONTAINER_1#*|%%|*}
+                service: ${CUSTOM_CONTAINER_1#*|#*|}
+                port: ${CUSTOM_CONTAINER_1##*|}
+
+      # Custom container 2 (if defined)
+      - match:
+          selector: '{container_name=~"${CUSTOM_CONTAINER_2%%|*:}"}'
+          stages:
+            - labels:
+                app: ${CUSTOM_CONTAINER_2#*|%%|*}
+                service: ${CUSTOM_CONTAINER_2#*|#*|}
+                port: ${CUSTOM_CONTAINER_2##*|}
+
+      # Add common labels for all containers
+      - labels:
+          stream:
+          container_name:
+          image:

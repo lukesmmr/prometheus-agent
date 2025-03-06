@@ -18,12 +18,43 @@ services:
     container_name: promtail
     restart: always
     environment:
-      - LOKI_BASIC_AUTH_USER=${LOKI_BASIC_AUTH_USER}
-      - LOKI_BASIC_AUTH_PW=${LOKI_BASIC_AUTH_PW}
+      # Instance identification and connection
+      - MAIN_INSTANCE_PRIVATE_IP=${MAIN_INSTANCE_PRIVATE_IP}
+      - HOSTNAME=${HOSTNAME}
+      
+      # Container pattern matching
+      # Examples of pattern combinations:
+      #   Single container:    node-app
+      #   Multiple patterns:   app.*|node.*|express.*
+      #   Exact match:        my-exact-container-name
+      #   Wildcard match:     *-node-*
+      - WEBAPP_CONTAINER_PATTERN=${WEBAPP_CONTAINER_PATTERN:-}
+      - WEBSERVER_CONTAINER_PATTERN=${WEBSERVER_CONTAINER_PATTERN:-}
+      - DATABASE_CONTAINER_PATTERN=${DATABASE_CONTAINER_PATTERN:-}
+      
+      # Service ports for labeling
+      # Examples:
+      #   Node.js apps:     3000-3999
+      #   Web servers:      80,443,8080,8443
+      #   Databases:        27017,5432,3306
+      - WEBAPP_PORT=${WEBAPP_PORT:-}
+      - WEBSERVER_PORT=${WEBSERVER_PORT:-}
+      - DATABASE_PORT=${DATABASE_PORT:-}
+      
+      # Custom container definitions
+      # Format: "PATTERN|APP|SERVICE|PORT"
+      # Examples:
+      #   Redis:          "redis.*|cache|redis|6379"
+      #   Elasticsearch:  "elastic.*|search|elasticsearch|9200"
+      #   RabbitMQ:      "rabbitmq.*|queue|rabbitmq|5672"
+      #   Prometheus:     "prometheus.*|monitoring|prometheus|9090"
+      - CUSTOM_CONTAINER_1=${CUSTOM_CONTAINER_1:-}
+      - CUSTOM_CONTAINER_2=${CUSTOM_CONTAINER_2:-}
     volumes:
       - "/var/log:/var/log:ro"
       - "/var/lib/docker/containers:/var/lib/docker/containers:ro"
       - "./promtail-config.yaml:/etc/promtail/promtail.yaml:ro"
+      - "promtail-positions:/tmp"
     command:
       - -config.file=/etc/promtail/promtail.yaml
       - -config.expand-env=true
@@ -32,4 +63,10 @@ services:
     image: alpine
     container_name: ping_agent
     restart: always
-    command: sh -c "while true; do ping -c 1 ${MAIN_INSTANCE_PRIVATE_IP} && sleep 60; done" 
+    environment:
+      - MAIN_INSTANCE_PRIVATE_IP=${MAIN_INSTANCE_PRIVATE_IP}
+    command: sh -c "while true; do ping -c 1 ${MAIN_INSTANCE_PRIVATE_IP} && sleep 60; done"
+
+volumes:
+  promtail-positions:
+    # Using a named volume for positions file to persist across restarts 

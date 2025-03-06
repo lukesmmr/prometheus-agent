@@ -3,218 +3,195 @@
 This repository provides a simple, lightweight logging and metrics agent to run on an AWS EC2 Ubuntu instance. The agent runs three Docker containers:
 
 1. **node-exporter**  
-   Collects host-level metrics. The service is very low on memory and CPU usage.
+   Collects host-level metrics on port 9101. Very low memory and CPU usage.
 
 2. **promtail**  
-   Reads log files (both system logs and Docker container logs) and forwards them to your main EC2 instance running a Grafana custom instance (with a Loki data source configured) through a direct HTTP connection over private IP.
+   Reads Docker container logs and system logs, forwarding them to your main logging instance through a direct HTTP connection over private IP.
 
 3. **ping-agent**  
-   Pings the main EC2 instance via its private IP every 60 seconds to ensure that the connection is up.
-
-## Environment Configuration
-
-This project uses environment variables to configure connections. The values are read from a `.env` file located at the repo root.
-
-### Setup .env
-
-1. Copy the `.env.template` file to `.env`:
-   ```bash
-   cp .env.template .env
-   ```
-
-2. Open the `.env` file and update with your values:
-   ```env
-   MAIN_INSTANCE_PRIVATE_IP=10.0.1.5
-   LOKI_BASIC_AUTH_USER=your-username
-   LOKI_BASIC_AUTH_PW=your-secure-password
-   ```
-
-### Usage in Configurations
-
-- **Promtail Configuration:**  
-  In `promtail-config.yaml`, the Loki push client URL is configured to use HTTP with your private IP:
-  ```
-  http://${MAIN_INSTANCE_PRIVATE_IP}/loki/api/v1/push
-  ```
-  This allows direct communication over your private network, which is secured by AWS security groups.
-
-- **Ping Agent (Docker Compose):**  
-  The `ping-agent` service in the `docker-compose.yml` file uses:
-  \[
-  ping -c 1 \${MAIN_INSTANCE_PRIVATE_IP}
-  \]
-  so that the ping command always targets the IP defined in your `.env` file.
+   Monitors connectivity to the main instance via private IP.
 
 ## Architecture Overview
 
-- **Metrics Collection:**  
-  [node_exporter](https://github.com/prometheus/node_exporter) runs in a container using host networking and exports metrics (e.g., from \`/proc\` and \`/sys\`) on port 9100. Your main instance (or Prometheus) can scrape these metrics.
+- **Metrics Collection**: node_exporter exposes host metrics on port 9101
+- **Log Collection**: promtail automatically detects and collects logs from:
+  - Docker containers (using container name pattern matching)
+  - System logs (/var/log)
+- **Authentication**: Handled by your reverse proxy on the main instance
+- **Communication**: All traffic stays within your private VPC network
 
-- **Log Collection:**  
-  [promtail](https://grafana.com/docs/loki/latest/clients/promtail/) tails system logs (from \`/var/log\`) and Docker container logs (from \`/var/lib/docker/containers\`). It then pushes them over HTTP to a Loki endpoint on your main instance. Authentication is handled via basic auth.
+## Container Log Collection
 
-- **Connectivity Checker:**  
-  A simple Alpine-based container pings your main instance's private IP periodically. This is useful for alerting if network connectivity fails.
+The agent automatically detects and collects logs from Docker containers based on pattern matching. Each container's logs are labeled based on its type:
 
-## Prerequisites
+### Built-in Container Types
 
-- An **Ubuntu EC2 instance** with Docker and Docker Compose installed.
-- Ensure that your AWS security groups allow communication from the agent instance to the main EC2 instance over the required ports:
-  - For **node_exporter**: TCP port 9101 (if your aggregator/prometheus needs to scrape metrics).
-  - For **promtail**: HTTP (typically port 80 or 3100 for Loki) to your main instance's private IP.
-  - For **ping-agent**: ICMP must be allowed.
-- A main EC2 instance running Grafana with a **Loki** (or compatible) log ingestion endpoint.
+1. **Web Applications** (`app: webapp`)
+   ```env
+   WEBAPP_CONTAINER_PATTERN=pnm-server-app|node-app.*|.*express.*
+   WEBAPP_PORT=3001
+   ```
+
+2. **Web Servers** (`app: webserver`)
+   ```env
+   WEBSERVER_CONTAINER_PATTERN=.*reverse_proxy.*|caddy.*|nginx.*
+   WEBSERVER_PORT=8443
+   ```
+
+3. **Databases** (`app: database`)
+   ```env
+   DATABASE_CONTAINER_PATTERN=mongodb|mongo.*|.*db.*
+   DATABASE_PORT=27117
+   ```
+
+### Custom Container Support
+
+Define custom containers using the format: `NAME_PATTERN|LABEL_APP|LABEL_SERVICE|PORT`
+
+Examples:
+```env
+# Redis cache
+CUSTOM_CONTAINER_1="redis.*|cache|redis|6379"
+
+# Elasticsearch
+CUSTOM_CONTAINER_2="elastic.*|search|elasticsearch|9200"
+```
 
 ## Setup Instructions
 
 1. **Clone the Repository**
-
    ```bash
    git clone <your-repo-url>
    cd <your-repo-directory>
    ```
 
-2. **Configure the Environment**
-
-   Copy the environment template and update the values:
+2. **Configure Environment**
    ```bash
    cp .env.template .env
-   # Then edit the .env file to specify your MAIN_INSTANCE_PRIVATE_IP, LOKI_BASIC_AUTH_USER, and LOKI_BASIC_AUTH_PW values.
    ```
 
-3. **Launch the Agent via Docker Compose**
+   Edit `.env` with your configuration:
+   ```env
+   # Main instance private IP (where your reverse proxy/Loki runs)
+   MAIN_INSTANCE_PRIVATE_IP=10.0.1.5
+   # Container patterns for your setup
+   WEBAPP_CONTAINER_PATTERN=your-webapp-container
+   WEBSERVER_CONTAINER_PATTERN=your-webserver-container
+   DATABASE_CONTAINER_PATTERN=your-database-container
 
-   From the directory containing your files, run:
+   # Service ports
+   WEBAPP_PORT=<your-webapp-port>
+   WEBSERVER_PORT=<your-webserver-port>
+   DATABASE_PORT=<your-database-port>
+   ```
+
+3. **Start the Agent**
    ```bash
-   docker compose up -d
+   chmod +x agent-control.sh
+   ./agent-control.sh start
    ```
-   This will start the three services in detached mode.
-
-4. **Verify the Setup**
-
-   - Check that **node-exporter** is running and accessible on port 9101:
-     ```bash
-     curl http://localhost:9101/metrics
-     ```
-   - Review the logs of the **promtail** service to ensure it's tailing files and pushing logs:
-     ```bash
-     docker logs promtail
-     ```
-   - Confirm that **ping-agent** shows continuous pings (you can inspect its logs):
-     ```bash
-     docker logs ping-agent
-     ```
-
-5. **Configure Grafana**
-
-   - In your Grafana custom instance on the main EC2 instance, ensure your Loki data source is properly configured.
-   - Set up your reverse proxy to forward requests from `https://your-domain.com/loki/api/v1/push` to your Loki instance.
-   - Configure basic authentication in your reverse proxy to match the credentials used in the promtail configuration.
-   - Also add your node-exporter endpoints (using the private IPs of your agents) as metrics sources if needed.
-
-## Notes & Considerations
-
-- **Simplicity:** This solution emphasizes a simple codebase to reduce overhead and maintenance complexity.
-- **Security:** Logs are transmitted over HTTP with basic authentication within your private network.
-- **Security Groups:** Double-check that the security groups for your EC2 instances allow the required traffic between agents and the main Grafana/Loki instance.
-- **Customization:** Feel free to expand the promtail \`scrape_configs\` if you need to include additional log paths.
-- **Environment Variable Processing:** Promtail is configured with `-config.expand-env=true` to support environment variable substitution.
-
-## Troubleshooting
-
-- If logs are not showing up in Grafana, ensure that:
-  - Your Loki instance is correctly configured to receive HTTP requests
-  - The basic auth credentials are correct
-  - Your security groups allow traffic on the required ports
-- Use \`docker logs\` to review individual service logs.  
-- Verify that Docker volumes are correctly mounted and that your log paths exist on the host.
-
-Happy monitoring!
 
 ## Agent Control Script
 
-To simplify managing the logging agent's Docker services (i.e., **node-exporter**, **promtail**, and **ping-agent**), this repository includes a control script named `agent-control.sh`. This script allows you to start, stop, restart, and check the status of your services with a single command.
+The `agent-control.sh` script manages the agent services:
 
-### Usage
+```bash
+# Start services
+./agent-control.sh start
 
-1. **Give the Script Execution Permission:**
+# Stop services
+./agent-control.sh stop
 
-   ```bash
-   chmod +x agent-control.sh
-   ```
+# Restart services
+./agent-control.sh restart
 
-2. **Starting the Services:**
+# Check status
+./agent-control.sh status
 
-   - **Normal Mode:**  
-     This uses the environment variables defined in your `.env` file.
-     ```bash
-     ./agent-control.sh start
-     ```
-     
-   - **Mock Mode:**  
-     For local testing, you can override the environment with mock values using the `--mock` flag.
-     ```bash
-     ./agent-control.sh start --mock
-     ```
+# Test locally with mock IP
+./agent-control.sh start --mock
+```
 
-3. **Stopping the Services:**
+## Querying Logs in Grafana
 
-   ```bash
-   ./agent-control.sh stop
-   ```
+Use these label selectors to query your logs:
 
-4. **Restarting the Services:**
+```logql
+# All web application logs
+{app="webapp"}
 
-   - **Normal Mode:**
-     ```bash
-     ./agent-control.sh restart
-     ```
-   
-   - **Mock Mode:**
-     ```bash
-     ./agent-control.sh restart --mock
-     ```
+# All database logs
+{app="database"}
 
-5. **Checking Service Status:**
+# All web server logs
+{app="webserver"}
 
-   ```bash
-   ./agent-control.sh status
-   ```
+# Specific container logs
+{container_name=~".*webapp.*"}
 
-### Notes
+# Specific host's logs
+{host="your-hostname"}
 
-- The control script utilizes `docker compose` under the hood, so ensure that Docker Compose is installed and the `docker-compose.yml` file is present in your project directory.
-- The `--mock` flag is especially helpful for local testing, allowing you to simulate the environment without affecting the production setup by overriding the environment variables.
-
-By integrating this script into your workflow, you can easily manage your logging agent services both in production and for local testing.
+# Combine selectors
+{app="webapp", host="your-hostname"}
 
 ## Security Considerations
 
-This logging and metrics agent is designed to operate within a private network environment (such as AWS VPC) and relies on proper network security controls to maintain its security posture. Please review the following security considerations before deployment:
+1. **Network Security**:
+   - Deploy only within a private VPC network
+   - Use security groups to restrict access:
+     - Allow node-exporter (9101) access only from Prometheus
+     - Allow Loki push access only to your main instance
+     - Allow ICMP for ping-agent
 
-### Network Security Requirements
+2. **Container Access**:
+   - All container logs are mounted read-only
+   - System logs are mounted read-only
+   - Promtail runs without privileged access
 
-- **Private Network Operation**: This solution should only be deployed within a private network (e.g., AWS VPC) where agents and the main instance communicate over private IP addresses.
+## Troubleshooting
 
-- **Non-Encrypted Traffic**: This solution uses HTTP instead of HTTPS for log transmission. This is acceptable ONLY because:
-  1. All traffic stays within your private VPC network
-  2. AWS security groups restrict access to only authorized instances
-  3. The traffic never traverses the public internet
+1. **Check Container Logs**
+   ```bash
+   # Check Promtail logs
+   docker logs promtail
 
-- **Security Group Configuration**: Properly configure security groups or firewall rules to:
-  - Allow only the main Grafana/Loki instance to access the node-exporter metrics endpoint (port 9101)
-  - Allow only necessary communication between agent instances and the main instance
-  - Restrict all other inbound traffic to these services
+   # Check node-exporter metrics
+   curl http://localhost:9101/metrics
 
-- **No Public Exposure**: Never expose the node-exporter or promtail endpoints to the public internet
+   # Check ping-agent connectivity
+   docker logs ping_agent
+   ```
 
-### Important Security Warning
+2. **Verify Log Collection**
+   ```bash
+   # List detected containers
+   docker logs promtail | grep "container_name"
 
-If your architecture changes and traffic needs to traverse the public internet or untrusted networks, you MUST reconfigure this solution to use HTTPS with proper TLS certificates.
+   # Check Promtail targets
+   curl http://localhost:9080/targets
+   ```
 
-To enhance the security of this solution one could:
+3. **Common Issues**:
+   - If logs aren't showing up, check:
+     - Container name patterns match your containers
+     - Main instance IP is correct
+     - Security group rules allow traffic
+     - Reverse proxy is properly configured
 
-1. **Container Hardening**: Add user specifications and capability restrictions to the Docker Compose file
-2. **Network Segmentation**: Use AWS security groups to strictly control traffic between components
-3. **Persistent Storage**: Move the positions file from `/tmp` to a persistent, secure location
-4. **Credential Management**: Use a secure vault solution for managing the basic auth credentials
+## Best Practices
+
+1. **Container Naming**:
+   - Use consistent naming patterns for containers
+   - Document patterns in your `.env` file
+   - Use specific patterns to avoid false matches
+
+2. **Pattern Matching**:
+   - Start with exact matches for known containers
+   - Use wildcards carefully to avoid matching unwanted containers
+   - Test patterns with your actual container names
+
+3. **Custom Containers**:
+   - Use custom container definitions for specialized services
+   - Document the purpose of each custom pattern
+   - Keep pattern matching as specific as possible
