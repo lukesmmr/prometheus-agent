@@ -17,10 +17,11 @@ services:
     image: grafana/promtail:latest
     container_name: promtail
     restart: always
+    hostname: "${HOSTNAME:-$(hostname)}"
     environment:
       # Instance identification and connection
       - MAIN_INSTANCE_PRIVATE_IP=${MAIN_INSTANCE_PRIVATE_IP}
-      - HOSTNAME=${HOSTNAME}
+      - HOSTNAME=${HOSTNAME:-$(hostname)}
       
       # Container pattern matching
       # Examples of pattern combinations:
