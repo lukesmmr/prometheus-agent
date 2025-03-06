@@ -96,7 +96,7 @@ scrape_configs:
 
       # Web application containers
       - match:
-          selector: '{container_name=~".+"} | ${WEBAPP_CONTAINER_PATTERN:=""}'
+          selector: '{container_name=~"${WEBAPP_CONTAINER_PATTERN:.*}"}'
           stages:
             - labels:
                 app: webapp
@@ -105,7 +105,7 @@ scrape_configs:
 
       # Web server containers
       - match:
-          selector: '{container_name=~".+"} | ${WEBSERVER_CONTAINER_PATTERN:=""}'
+          selector: '{container_name=~"${WEBSERVER_CONTAINER_PATTERN:.*}"}'
           stages:
             - labels:
                 app: webserver
@@ -114,7 +114,7 @@ scrape_configs:
 
       # Database containers
       - match:
-          selector: '{container_name=~".+"} | ${DATABASE_CONTAINER_PATTERN:=""}'
+          selector: '{container_name=~"${DATABASE_CONTAINER_PATTERN:.*}"}'
           stages:
             - labels:
                 app: database
@@ -123,7 +123,7 @@ scrape_configs:
 
       # Custom container 1
       - match:
-          selector: '{container_name=~".+"} | ${CUSTOM_CONTAINER_1%%|*:=""}'
+          selector: '{container_name=~"${CUSTOM_CONTAINER_1%%|*:.*}"}'
           stages:
             - labels:
                 app: ${CUSTOM_CONTAINER_1#*|%%|*:-}
@@ -132,7 +132,7 @@ scrape_configs:
 
       # Custom container 2
       - match:
-          selector: '{container_name=~".+"} | ${CUSTOM_CONTAINER_2%%|*:=""}'
+          selector: '{container_name=~"${CUSTOM_CONTAINER_2%%|*:.*}"}'
           stages:
             - labels:
                 app: ${CUSTOM_CONTAINER_2#*|%%|*:-}
