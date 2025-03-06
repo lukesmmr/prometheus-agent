@@ -7,7 +7,7 @@ positions:
   filename: /tmp/positions.yaml
 
 clients:
-  - url: "http://${MAIN_INSTANCE_PRIVATE_IP}/loki/api/v1/push"
+  - url: "http://${MAIN_INSTANCE_PRIVATE_IP}:3100/loki/api/v1/push"
     tenant_id: "default"
     external_labels:
       host: ${HOSTNAME}
