@@ -99,45 +99,45 @@ scrape_configs:
           selector: '{container_name=~"${WEBAPP_CONTAINER_PATTERN:.*}"}'
           stages:
             - labels:
-                app: webapp
-                service: webapp
-                port: ${WEBAPP_PORT:-}
+                app: "webapp"
+                service: "webapp"
+                port: "${WEBAPP_PORT:-}"
 
       # Web server containers
       - match:
           selector: '{container_name=~"${WEBSERVER_CONTAINER_PATTERN:.*}"}'
           stages:
             - labels:
-                app: webserver
-                service: webserver
-                port: ${WEBSERVER_PORT:-}
+                app: "webserver"
+                service: "webserver"
+                port: "${WEBSERVER_PORT:-}"
 
       # Database containers
       - match:
           selector: '{container_name=~"${DATABASE_CONTAINER_PATTERN:.*}"}'
           stages:
             - labels:
-                app: database
-                service: database
-                port: ${DATABASE_PORT:-}
+                app: "database"
+                service: "database"
+                port: "${DATABASE_PORT:-}"
 
       # Custom container 1
       - match:
           selector: '{container_name=~"${CUSTOM_CONTAINER_1%%|*:.*}"}'
           stages:
             - labels:
-                app: ${CUSTOM_CONTAINER_1#*|%%|*:-}
-                service: ${CUSTOM_CONTAINER_1#*|#*|:-}
-                port: ${CUSTOM_CONTAINER_1##*|:-}
+                app: "${CUSTOM_CONTAINER_1#*|%%|*:-}"
+                service: "${CUSTOM_CONTAINER_1#*|#*|:-}"
+                port: "${CUSTOM_CONTAINER_1##*|:-}"
 
       # Custom container 2
       - match:
           selector: '{container_name=~"${CUSTOM_CONTAINER_2%%|*:.*}"}'
           stages:
             - labels:
-                app: ${CUSTOM_CONTAINER_2#*|%%|*:-}
-                service: ${CUSTOM_CONTAINER_2#*|#*|:-}
-                port: ${CUSTOM_CONTAINER_2##*|:-}
+                app: "${CUSTOM_CONTAINER_2#*|%%|*:-}"
+                service: "${CUSTOM_CONTAINER_2#*|#*|:-}"
+                port: "${CUSTOM_CONTAINER_2##*|:-}"
 
       # Add common labels for all containers
       - labels:
