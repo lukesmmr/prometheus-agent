@@ -11,7 +11,7 @@
 # environment variable to the specified comma-separated list of roles.
 #
 # Available roles:
-#   webapp    - For Node.js application (pnm-server-app)
+#   webapp    - For Node.js application
 #   webserver - For Caddy reverse proxy
 #   database  - For MongoDB instance
 #
@@ -35,7 +35,7 @@ usage() {
     echo "  --roles ROLES       Set instance roles (comma-separated)" >&2
     echo "" >&2
     echo "Available roles:" >&2
-    echo "  webapp              Node.js application (pnm-server-app)" >&2
+    echo "  webapp              Node.js application (node-app)" >&2
     echo "  webserver          Caddy reverse proxy" >&2
     echo "  database           MongoDB instance" >&2
     echo "" >&2

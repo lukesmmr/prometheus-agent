@@ -28,7 +28,7 @@ The agent automatically detects and collects logs from Docker containers based o
 
 1. **Web Applications** (`app: webapp`)
    ```env
-   WEBAPP_CONTAINER_PATTERN=pnm-server-app|node-app.*|.*express.*
+   WEBAPP_CONTAINER_PATTERN=node-app.*|.*express.*
    WEBAPP_PORT=3001
    ```
 
