@@ -79,6 +79,39 @@ scrape_configs:
                 app: monitoring
                 service: monitoring
 
+      # Caddy container logs
+      - match:
+          selector: '{container=~".*caddy.*"}'
+          stages:
+            - json:
+                expressions:
+                  ts: ts
+                  level: level
+                  msg: msg
+                  request: request
+                  status: status
+                  size: size
+                  duration: duration
+                  remote_ip: request.remote_ip
+                  proto: request.proto
+                  method: request.method
+                  host: request.host
+                  uri: request.uri
+                  headers: request.headers
+                  user_agent: request.headers."User-Agent"
+            - labels:
+                level:
+                method:
+                status:
+                host:
+            - timestamp:
+                source: ts
+                format: RFC3339Nano
+            - static_labels:
+                app: "webserver"
+                service: "caddy"
+                port: "${WEBSERVER_PORT:-}"
+
       # Web application containers
       - match:
           selector: '{container=~"${WEBAPP_CONTAINER_PATTERN:.*}"}'
@@ -88,9 +121,9 @@ scrape_configs:
                 service: "webapp"
                 port: "${WEBAPP_PORT:-}"
 
-      # Web server containers
+      # Web server containers (non-Caddy)
       - match:
-          selector: '{container=~"${WEBSERVER_CONTAINER_PATTERN:.*}"}'
+          selector: '{container=~"${WEBSERVER_CONTAINER_PATTERN:.*}", container!~".*caddy.*"}'
           stages:
             - static_labels:
                 app: "webserver"
