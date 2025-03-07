@@ -22,6 +22,9 @@ services:
       # Instance identification and connection
       - MAIN_INSTANCE_PRIVATE_IP=${MAIN_INSTANCE_PRIVATE_IP}
       - HOSTNAME=${HOSTNAME:-$(hostname)}
+      - FRIENDLY_NAME=${FRIENDLY_NAME:-${HOSTNAME}}
+      - NODE_TYPE=${NODE_TYPE:-unknown}
+      - NODE_ENV=${NODE_ENV:-unknown}
       
       # Container pattern matching
       # Examples of pattern combinations:
