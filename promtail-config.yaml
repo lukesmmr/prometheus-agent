@@ -59,26 +59,23 @@ scrape_configs:
           __path__: /var/lib/docker/containers/*/*-json.log
 
     pipeline_stages:
-      - timestamp:
-          source: time
-          format: RFC3339Nano
-          fallback_formats:
-            - RFC3339
-            - UnixMs
-          location: UTC
       - json:
           expressions:
             log: log
             stream: stream
+            attrs: attrs
             container_name: attrs.name
             image: attrs.image
+      - labels:
+          container_name:
+          image:
       - match:
           selector: '{container_name=~"node_exporter|promtail|ping_agent"}'
           stages:
             - labels:
                 stream:
-                container_name:
-                image:
+                app: monitoring
+                service: monitoring
 
   # Application containers
   - job_name: application-containers
@@ -94,20 +91,18 @@ scrape_configs:
           __path__: /var/lib/docker/containers/*/*-json.log
 
     pipeline_stages:
-      - timestamp:
-          source: time
-          format: RFC3339Nano
-          fallback_formats:
-            - RFC3339
-            - UnixMs
-          location: UTC
       - json:
           expressions:
             log: log
             stream: stream
+            attrs: attrs
             container_name: attrs.name
             image: attrs.image
             container_id: attrs.container_id
+      - labels:
+          container_name:
+          image:
+          container_id:
 
       # Web application containers
       - match:
@@ -117,9 +112,6 @@ scrape_configs:
                 app: "webapp"
                 service: "webapp"
                 port: "${WEBAPP_PORT:-}"
-                container_name:
-                image:
-                container_id:
 
       # Web server containers
       - match:
@@ -129,9 +121,6 @@ scrape_configs:
                 app: "webserver"
                 service: "webserver"
                 port: "${WEBSERVER_PORT:-}"
-                container_name:
-                image:
-                container_id:
 
       # Database containers
       - match:
@@ -141,9 +130,6 @@ scrape_configs:
                 app: "database"
                 service: "database"
                 port: "${DATABASE_PORT:-}"
-                container_name:
-                image:
-                container_id:
 
       # Custom container 1
       - match:
@@ -153,9 +139,6 @@ scrape_configs:
                 app: "${CUSTOM_CONTAINER_1#*|%%|*:-}"
                 service: "${CUSTOM_CONTAINER_1#*|#*|:-}"
                 port: "${CUSTOM_CONTAINER_1##*|:-}"
-                container_name:
-                image:
-                container_id:
 
       # Custom container 2
       - match:
@@ -165,9 +148,6 @@ scrape_configs:
                 app: "${CUSTOM_CONTAINER_2#*|%%|*:-}"
                 service: "${CUSTOM_CONTAINER_2#*|#*|:-}"
                 port: "${CUSTOM_CONTAINER_2##*|:-}"
-                container_name:
-                image:
-                container_id:
 
       # Add common labels for all containers
       - labels:
