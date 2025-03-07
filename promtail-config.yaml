@@ -11,6 +11,9 @@ clients:
     tenant_id: "default"
     external_labels:
       host: ${HOSTNAME}
+      friendly_name: "${FRIENDLY_NAME:-${HOSTNAME}}"
+      node_type: "${NODE_TYPE:-unknown}"
+      env: "${NODE_ENV:-unknown}"
     backoff_config:
       min_period: 500ms
       max_period: 10s
@@ -26,7 +29,10 @@ scrape_configs:
           - localhost
         labels:
           job: system
-          host: client
+          host: ${HOSTNAME}
+          friendly_name: "${FRIENDLY_NAME:-${HOSTNAME}}"
+          node_type: "${NODE_TYPE:-unknown}"
+          env: "${NODE_ENV:-unknown}"
           __path__: /var/log/{syslog,messages,dmesg,cloud-init.log}
 
     pipeline_stages:
@@ -45,7 +51,10 @@ scrape_configs:
           - localhost
         labels:
           job: docker
-          host: client
+          host: ${HOSTNAME}
+          friendly_name: "${FRIENDLY_NAME:-${HOSTNAME}}"
+          node_type: "${NODE_TYPE:-unknown}"
+          env: "${NODE_ENV:-unknown}"
           app: monitoring
           __path__: /var/lib/docker/containers/*/*-json.log
 
@@ -62,12 +71,14 @@ scrape_configs:
             log: log
             stream: stream
             container_name: attrs.name
+            image: attrs.image
       - match:
           selector: '{container_name=~"node_exporter|promtail|ping_agent"}'
           stages:
             - labels:
                 stream:
                 container_name:
+                image:
 
   # Application containers
   - job_name: application-containers
@@ -76,7 +87,10 @@ scrape_configs:
           - localhost
         labels:
           job: docker
-          host: client
+          host: ${HOSTNAME}
+          friendly_name: "${FRIENDLY_NAME:-${HOSTNAME}}"
+          node_type: "${NODE_TYPE:-unknown}"
+          env: "${NODE_ENV:-unknown}"
           __path__: /var/lib/docker/containers/*/*-json.log
 
     pipeline_stages:
@@ -93,6 +107,7 @@ scrape_configs:
             stream: stream
             container_name: attrs.name
             image: attrs.image
+            container_id: attrs.container_id
 
       # Web application containers
       - match:
@@ -102,6 +117,9 @@ scrape_configs:
                 app: "webapp"
                 service: "webapp"
                 port: "${WEBAPP_PORT:-}"
+                container_name:
+                image:
+                container_id:
 
       # Web server containers
       - match:
@@ -111,6 +129,9 @@ scrape_configs:
                 app: "webserver"
                 service: "webserver"
                 port: "${WEBSERVER_PORT:-}"
+                container_name:
+                image:
+                container_id:
 
       # Database containers
       - match:
@@ -120,6 +141,9 @@ scrape_configs:
                 app: "database"
                 service: "database"
                 port: "${DATABASE_PORT:-}"
+                container_name:
+                image:
+                container_id:
 
       # Custom container 1
       - match:
@@ -129,6 +153,9 @@ scrape_configs:
                 app: "${CUSTOM_CONTAINER_1#*|%%|*:-}"
                 service: "${CUSTOM_CONTAINER_1#*|#*|:-}"
                 port: "${CUSTOM_CONTAINER_1##*|:-}"
+                container_name:
+                image:
+                container_id:
 
       # Custom container 2
       - match:
@@ -138,6 +165,9 @@ scrape_configs:
                 app: "${CUSTOM_CONTAINER_2#*|%%|*:-}"
                 service: "${CUSTOM_CONTAINER_2#*|#*|:-}"
                 port: "${CUSTOM_CONTAINER_2##*|:-}"
+                container_name:
+                image:
+                container_id:
 
       # Add common labels for all containers
       - labels:
