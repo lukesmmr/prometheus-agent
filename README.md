@@ -67,13 +67,19 @@ CUSTOM_CONTAINER_2="elastic.*|search|elasticsearch|9200"
 
 2. **Configure Environment**
    ```bash
+   # Copy the template
    cp .env.template .env
+
+   # Set the hostname (required for proper log identification)
+   echo "HOSTNAME=$(hostname)" >> .env
    ```
 
    Edit `.env` with your configuration:
    ```env
-   # Main instance private IP (where your reverse proxy/Loki runs)
+   # Instance identification
+   HOSTNAME=your-instance-hostname  # Added automatically by setup command
    MAIN_INSTANCE_PRIVATE_IP=10.0.1.5
+
    # Container patterns for your setup
    WEBAPP_CONTAINER_PATTERN=your-webapp-container
    WEBSERVER_CONTAINER_PATTERN=your-webserver-container
