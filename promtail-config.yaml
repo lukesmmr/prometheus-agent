@@ -44,113 +44,82 @@ scrape_configs:
             - UnixMs
           location: UTC
 
-  # Agent containers (node-exporter, promtail, ping-agent)
-  - job_name: agent-containers
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: docker
+  # All Docker containers (including agents and applications)
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        target_label: container
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: stream
+      - source_labels: ['__meta_docker_container_label_logging_jobname']
+        target_label: job
+        replacement: '${1:-docker}'
+      - source_labels: ['__meta_docker_container_image']
+        target_label: image
+
+    pipeline_stages:
+      - docker: {}
+      
+      # Add common labels
+      - static_labels:
           host: ${HOSTNAME}
           friendly_name: "${FRIENDLY_NAME:-${HOSTNAME}}"
           node_type: "${NODE_TYPE:-unknown}"
           env: "${NODE_ENV:-unknown}"
-          app: monitoring
-          __path__: /var/lib/docker/containers/*/*-json.log
 
-    pipeline_stages:
-      - json:
-          expressions:
-            log: log
-            stream: stream
-            attrs: attrs
-            container_name: attrs.name
-            image: attrs.image
-      - labels:
-          container_name:
-          image:
+      # Agent containers (node-exporter, promtail, ping-agent)
       - match:
-          selector: '{container_name=~"node_exporter|promtail|ping_agent"}'
+          selector: '{container=~"node_exporter|promtail|ping_agent"}'
           stages:
-            - labels:
-                stream:
+            - static_labels:
                 app: monitoring
                 service: monitoring
 
-  # Application containers
-  - job_name: application-containers
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: docker
-          host: ${HOSTNAME}
-          friendly_name: "${FRIENDLY_NAME:-${HOSTNAME}}"
-          node_type: "${NODE_TYPE:-unknown}"
-          env: "${NODE_ENV:-unknown}"
-          __path__: /var/lib/docker/containers/*/*-json.log
-
-    pipeline_stages:
-      - json:
-          expressions:
-            log: log
-            stream: stream
-            attrs: attrs
-            container_name: attrs.name
-            image: attrs.image
-            container_id: attrs.container_id
-      - labels:
-          container_name:
-          image:
-          container_id:
-
       # Web application containers
       - match:
-          selector: '{container_name=~"${WEBAPP_CONTAINER_PATTERN:.*}"}'
+          selector: '{container=~"${WEBAPP_CONTAINER_PATTERN:.*}"}'
           stages:
-            - labels:
+            - static_labels:
                 app: "webapp"
                 service: "webapp"
                 port: "${WEBAPP_PORT:-}"
 
       # Web server containers
       - match:
-          selector: '{container_name=~"${WEBSERVER_CONTAINER_PATTERN:.*}"}'
+          selector: '{container=~"${WEBSERVER_CONTAINER_PATTERN:.*}"}'
           stages:
-            - labels:
+            - static_labels:
                 app: "webserver"
                 service: "webserver"
                 port: "${WEBSERVER_PORT:-}"
 
       # Database containers
       - match:
-          selector: '{container_name=~"${DATABASE_CONTAINER_PATTERN:.*}"}'
+          selector: '{container=~"${DATABASE_CONTAINER_PATTERN:.*}"}'
           stages:
-            - labels:
+            - static_labels:
                 app: "database"
                 service: "database"
                 port: "${DATABASE_PORT:-}"
 
       # Custom container 1
       - match:
-          selector: '{container_name=~"${CUSTOM_CONTAINER_1%%|*:.*}"}'
+          selector: '{container=~"${CUSTOM_CONTAINER_1%%|*:.*}"}'
           stages:
-            - labels:
+            - static_labels:
                 app: "${CUSTOM_CONTAINER_1#*|%%|*:-}"
                 service: "${CUSTOM_CONTAINER_1#*|#*|:-}"
                 port: "${CUSTOM_CONTAINER_1##*|:-}"
 
       # Custom container 2
       - match:
-          selector: '{container_name=~"${CUSTOM_CONTAINER_2%%|*:.*}"}'
+          selector: '{container=~"${CUSTOM_CONTAINER_2%%|*:.*}"}'
           stages:
-            - labels:
+            - static_labels:
                 app: "${CUSTOM_CONTAINER_2#*|%%|*:-}"
                 service: "${CUSTOM_CONTAINER_2#*|#*|:-}"
                 port: "${CUSTOM_CONTAINER_2##*|:-}"
-
-      # Add common labels for all containers
-      - labels:
-          stream:
-          container_name:
-          image:
