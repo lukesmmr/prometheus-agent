@@ -44,6 +44,10 @@ services:
       - WEBAPP_PORT=${WEBAPP_PORT:-}
       - WEBSERVER_PORT=${WEBSERVER_PORT:-}
       - DATABASE_PORT=${DATABASE_PORT:-}
+
+      # Webserver log configuration
+      - WEBSERVER_LOG_PATH=${WEBSERVER_LOG_PATH:-/var/log/webserver}
+      - WEBSERVER_LOG_VOLUME=${WEBSERVER_LOG_VOLUME:-webserver-logs}
       
       # Custom container definitions
       # Format: "PATTERN|APP|SERVICE|PORT"
