@@ -60,7 +60,7 @@ services:
       - "/var/lib/docker/containers:/var/lib/docker/containers:ro"
       - "./promtail-config.yaml:/etc/promtail/promtail.yaml:ro"
       - "promtail-positions:/tmp"
-      - "caddy_logs:/var/log/caddy:ro"
+      - "webserver-logs:${WEBSERVER_LOG_PATH:-/var/log/webserver}:ro"
     command:
       - -config.file=/etc/promtail/promtail.yaml
       - -config.expand-env=true
@@ -76,5 +76,6 @@ services:
 volumes:
   promtail-positions:
     # Using a named volume for positions file to persist across restarts
-  caddy_logs:
+  webserver-logs:
+    name: "${WEBSERVER_LOG_VOLUME}"
     external: true # Volume managed externally

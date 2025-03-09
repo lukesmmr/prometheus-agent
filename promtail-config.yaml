@@ -44,18 +44,18 @@ scrape_configs:
             - UnixMs
           location: UTC
 
-  # Caddy log files from volume
-  - job_name: caddy-files
+  # Webserver log files from volume
+  - job_name: webserver-files
     static_configs:
       - targets:
           - localhost
         labels:
-          job: caddy
+          job: webserver
           host: ${HOSTNAME}
           friendly_name: "${FRIENDLY_NAME:-${HOSTNAME}}"
           node_type: "${NODE_TYPE:-unknown}"
           env: "${NODE_ENV:-unknown}"
-          __path__: /var/log/caddy/*.log
+          __path__: ${WEBSERVER_LOG_PATH:-/var/log/webserver}/*.log
 
     pipeline_stages:
       - json:
@@ -71,7 +71,7 @@ scrape_configs:
           format: RFC3339Nano
       - static_labels:
           app: "webserver"
-          service: "caddy"
+          service: "webserver"
 
   # All Docker containers (including agents and applications)
   - job_name: docker
@@ -100,7 +100,7 @@ scrape_configs:
           node_type: "${NODE_TYPE:-unknown}"
           env: "${NODE_ENV:-unknown}"
 
-      # Agent containers (node-exporter, promtail, ping-agent)
+      # Agent containers
       - match:
           selector: '{container=~"node_exporter|promtail|ping_agent"}'
           stages:
@@ -108,9 +108,9 @@ scrape_configs:
                 app: monitoring
                 service: monitoring
 
-      # Caddy container logs
+      # Webserver container logs
       - match:
-          selector: '{container=~".*caddy.*"}'
+          selector: '{container=~"${WEBSERVER_CONTAINER_PATTERN:.*}"}'
           stages:
             - json:
                 expressions:
@@ -125,7 +125,7 @@ scrape_configs:
                 format: RFC3339Nano
             - static_labels:
                 app: "webserver"
-                service: "caddy"
+                service: "webserver"
 
       # Web application containers
       - match:
@@ -135,15 +135,6 @@ scrape_configs:
                 app: "webapp"
                 service: "webapp"
                 port: "${WEBAPP_PORT:-}"
-
-      # Web server containers (non-Caddy)
-      - match:
-          selector: '{container=~"${WEBSERVER_CONTAINER_PATTERN:.*}", container!~".*caddy.*"}'
-          stages:
-            - static_labels:
-                app: "webserver"
-                service: "webserver"
-                port: "${WEBSERVER_PORT:-}"
 
       # Database containers
       - match:
