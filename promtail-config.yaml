@@ -44,6 +44,35 @@ scrape_configs:
             - UnixMs
           location: UTC
 
+  # Caddy log files from volume
+  - job_name: caddy-files
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: caddy
+          host: ${HOSTNAME}
+          friendly_name: "${FRIENDLY_NAME:-${HOSTNAME}}"
+          node_type: "${NODE_TYPE:-unknown}"
+          env: "${NODE_ENV:-unknown}"
+          __path__: /var/log/caddy/*.log
+
+    pipeline_stages:
+      - json:
+          expressions:
+            ts: ts
+            msg: msg
+            request: request
+            status: status
+      - labels:
+          status:
+      - timestamp:
+          source: ts
+          format: RFC3339Nano
+      - static_labels:
+          app: "webserver"
+          service: "caddy"
+
   # All Docker containers (including agents and applications)
   - job_name: docker
     docker_sd_configs:
@@ -86,31 +115,17 @@ scrape_configs:
             - json:
                 expressions:
                   ts: ts
-                  level: level
                   msg: msg
                   request: request
                   status: status
-                  size: size
-                  duration: duration
-                  remote_ip: request.remote_ip
-                  proto: request.proto
-                  method: request.method
-                  host: request.host
-                  uri: request.uri
-                  headers: request.headers
-                  user_agent: request.headers."User-Agent"
             - labels:
-                level:
-                method:
                 status:
-                host:
             - timestamp:
                 source: ts
                 format: RFC3339Nano
             - static_labels:
                 app: "webserver"
                 service: "caddy"
-                port: "${WEBSERVER_PORT:-}"
 
       # Web application containers
       - match:
